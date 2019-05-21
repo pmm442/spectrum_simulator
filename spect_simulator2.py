@@ -24,11 +24,12 @@ def gaussian(mu, sig):
 
 # setting up initial plot for spectrum
 fig, ax = plt.subplots()
-plt.subplots_adjust(left=0.25, bottom=0.275)
+plt.subplots_adjust(left=0.35, bottom=0.275)
 lmbda = np.arange(10.0, 50000.0, 10.0) #wavelength in Angstroms
 flux = np.zeros(len(lmbda))
 l, = plt.plot(lmbda, flux, lw=2, color='red')
-plt.axis([3500, 8000, 0, 1])
+ax.set_xlim([3500, 8000])
+ax.set_ylim([0, 1])
 
 ## STAR STUFF ############################################################################
 ##########################################################################################
@@ -90,38 +91,38 @@ He_ion_dist = gaussian(He_ion, 10)
 
 
 # calculate fluxes for stars
-a_planck = planckslaw(mu_astrs)
-a_absorp = -0.01*(Ha_dist + Hg_dist + Hb_dist)
-flux_a = a_planck + a_absorp
+flux_a = planckslaw(mu_astrs)
+a_absorp = -0.01*(Ha_dist + Hb_dist + Hg_dist)
+flux_a = flux_a + a_absorp
 
-f_planck = planckslaw(mu_fstrs)
+flux_f = planckslaw(mu_fstrs)
 f_absorp = -0.01*(Ca_K_dist + Ca_H_dist)
-flux_f = f_planck + f_absorp
+flux_f = flux_f + f_absorp
 
-g_planck = planckslaw(mu_gstrs)
+flux_g = planckslaw(mu_gstrs)
 g_absorp = -0.01*(Ti_O1_dist + Ti_O3_dist + Ti_O5_dist + Ti_O7_dist + Gband_dist)
-flux_g = g_planck + g_absorp
+flux_g = flux_g + g_absorp
 
-k_planck = planckslaw(mu_kstrs)
+flux_k = planckslaw(mu_kstrs)
 k_absorp = -0.01*(Na_dist)
-flux_k = k_planck + k_absorp
+flux_k = flux_k + k_absorp
 
-m_planck = planckslaw(mu_mstrs)
+flux_m = planckslaw(mu_mstrs)
 #m_absorp = -0.01*(Ti_O1_dist + Ti_O3_dist + Ti_O5_dist + Ti_O7_dist + Gband_dist + Na_dist)
-flux_m = m_planck #+ m_absorp
+#flux_m = flux_m + m_absorp
 
 coldfluxes = np.array([flux_a, flux_f, flux_g, flux_k, flux_m])
 pcoldstrtype = np.array([0.006, 0.03, 0.076, 0.121, 0.765]).reshape(-1,1)
 coldfluxes = coldfluxes * pcoldstrtype
 coldflux = np.sum(coldfluxes, axis=0)
 
-o_planck = planckslaw(mu_ostrs)
+flux_o = planckslaw(mu_ostrs)
 o_absorp = -0.001*(He_ion_dist)
-flux_o = o_planck + o_absorp
+flux_o = flux_o + o_absorp
 
-b_planck = planckslaw(mu_bstrs)
+flux_b = planckslaw(mu_bstrs)
 b_absorp = -0.001*(Ha_dist + Hg_dist + He_neutral_dist+ Hb_dist)
-flux_b = b_planck + b_absorp
+flux_b = flux_b + b_absorp
 
 hotfluxes = np.array([flux_o, flux_b])
 photstrtype = np.array([0.1, 0.9]).reshape(-1,1)
@@ -181,5 +182,21 @@ def reset(event):
 	l.set_ydata(flux)
 	fig.canvas.draw_idle()
 button.on_clicked(reset)
+
+rax = plt.axes([0.01, 0.5, 0.25, 0.15], facecolor=axcolor)
+radio = RadioButtons(rax, ('Stellar range', 'Extended range'), active=0)
+
+def changeaxis(label):
+	if label == 'Stellar range':
+		ax.set_xscale('linear')
+		ax.set_xlim([3500, 8000])
+	elif label == 'Extended range':
+		ax.set_xscale('log')
+		ax.set_xlim([100, 50000])
+	fig.canvas.draw_idle()
+
+radio.on_clicked(changeaxis)
+		
+
 
 plt.show()
