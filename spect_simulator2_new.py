@@ -60,7 +60,7 @@ def O_star_interpolator():
 O_interpolator = O_star_interpolator()
 
 def B_star_interpolator():
-    data = np.loadtxt("stellar_spectra/B57_star.txt")
+    data = np.loadtxt("stellar_spectra/B3_star.txt")
     wavelengths = data[:, 0]; spectrum = data[:, 1]
     return interp1d(wavelengths, spectrum)
 B_interpolator = B_star_interpolator()
@@ -105,10 +105,6 @@ stellar_spectra_interpolators['K'] = K_interpolator; stellar_spectra_interpolato
 ### Luminosity ###
 
 def planck(wavelength, stellar_type):
-    # Wavelength range for interpolator
-    start_wavelength = 150.0; end_wavelength = 2450.0
-    if stellar_type == 'M':
-        start_wavelength = 300.0
     interpolator = stellar_spectra_interpolators[stellar_type]
 
     # Temperature and Radius
@@ -121,18 +117,7 @@ def planck(wavelength, stellar_type):
         return np.power(wavelength_meters, -5.0) / np.expm1(h * c / k_B / wavelength_meters / temperature)
     normalization = plancks_law(ref_wavelength, temperature) / plancks_law(ref_wavelength, ref_temperature)
 
-    # Get spectral radiance
-    if start_wavelength <= wavelength and wavelength <= end_wavelength:
-        # from reference spectra
-        planck_value = interpolator(wavelength) * normalization
-    elif wavelength < start_wavelength:
-        # from Planck's law
-        normalization *= interpolator(start_wavelength) / plancks_law(start_wavelength, temperature)
-        planck_value = plancks_law(wavelength, temperature) * normalization
-    elif wavelength > end_wavelength:
-        # from Planck's law
-        normalization *= interpolator(end_wavelength) / plancks_law(end_wavelength, temperature)
-        planck_value = plancks_law(wavelength, temperature) * normalization
+    planck_value = interpolator(wavelength) * normalization
     return planck_value
 
 def luminosity(wavelength, stellar_type):
@@ -140,17 +125,19 @@ def luminosity(wavelength, stellar_type):
     temperature = np.power(10, log_stellar_temperatures[stellar_type])
     radius = radius_interpolator(temperature)
     return 4.0 * np.pi * np.power(radius, 2) * planck(wavelength, stellar_type)
-vectorized_luminosity = np.vectorize(luminosity)
+#vectorized_luminosity = np.vectorize(luminosity)
 
 ###############################################################################
 
 # setting up initial plot for spectrum
 fig, ax = plt.subplots()
-plt.subplots_adjust(left=0.25, bottom=0.275)
-lmbda = np.arange(10.0, 50000.0, 10.0) #wavelength in Angstroms
+plt.subplots_adjust(left=0.35, bottom=0.275)
+lmbda = np.arange(1000.0, 50000.0, 10.0) #wavelength in Angstroms
 flux = np.zeros(len(lmbda))
 l, = plt.plot(lmbda, flux, lw=2, color='red')
-plt.axis([2000, 10000, 0, 1])
+ax.set_xlim([3500, 8000])
+ax.set_ylim([0, 1])
+
 
 ## STAR STUFF ############################################################################
 ##########################################################################################
@@ -212,38 +199,49 @@ He_ion_dist = gaussian(He_ion, 10)
 
 
 # calculate fluxes for stars
-a_planck = planckslaw(mu_astrs)
-a_absorp = -0.01*(Ha_dist + Hg_dist + Hb_dist)
-flux_a = a_planck + a_absorp
+flux_a = planckslaw(mu_astrs)
+a_absorp = -0.01*(Ha_dist + Hb_dist + Hg_dist)
+flux_a = flux_a + a_absorp
 
-f_planck = planckslaw(mu_fstrs)
+flux_f = planckslaw(mu_fstrs)
 f_absorp = -0.01*(Ca_K_dist + Ca_H_dist)
-flux_f = f_planck + f_absorp
+flux_f = flux_f + f_absorp
 
-g_planck = planckslaw(mu_gstrs)
+flux_g = planckslaw(mu_gstrs)
 g_absorp = -0.01*(Ti_O1_dist + Ti_O3_dist + Ti_O5_dist + Ti_O7_dist + Gband_dist)
-flux_g = g_planck + g_absorp
+flux_g = flux_g + g_absorp
 
-k_planck = planckslaw(mu_kstrs)
+flux_k = planckslaw(mu_kstrs)
 k_absorp = -0.01*(Na_dist)
-flux_k = k_planck + k_absorp
+flux_k = flux_k + k_absorp
 
 m_planck = planckslaw(mu_mstrs)
 #m_absorp = -0.01*(Ti_O1_dist + Ti_O3_dist + Ti_O5_dist + Ti_O7_dist + Gband_dist + Na_dist)
 flux_m = m_planck #+ m_absorp
 
 wavelengths = lmbda / 10.0
-spectrum_o = vectorized_luminosity(wavelengths, 'O')
-spectrum_b = vectorized_luminosity(wavelengths, 'B')
-spectrum_a = vectorized_luminosity(wavelengths, 'A')
-spectrum_f = vectorized_luminosity(wavelengths, 'F')
-spectrum_g = vectorized_luminosity(wavelengths, 'G')
-spectrum_k = vectorized_luminosity(wavelengths, 'K')
-spectrum_m = vectorized_luminosity(wavelengths, 'M')
+#spectrum_o = vectorized_luminosity(wavelengths, 'O')
+#spectrum_b = vectorized_luminosity(wavelengths, 'B')
+#spectrum_a = vectorized_luminosity(wavelengths, 'A')
+#spectrum_f = vectorized_luminosity(wavelengths, 'F')
+#spectrum_g = vectorized_luminosity(wavelengths, 'G')
+#spectrum_k = vectorized_luminosity(wavelengths, 'K')
+#spectrum_m = vectorized_luminosity(wavelengths, 'M')
+
+spectrum_o = luminosity(wavelengths, 'O')
+spectrum_b = luminosity(wavelengths, 'B')
+spectrum_a = luminosity(wavelengths, 'A')
+spectrum_f = luminosity(wavelengths, 'F')
+spectrum_g = luminosity(wavelengths, 'G')
+spectrum_k = luminosity(wavelengths, 'K')
+spectrum_m = luminosity(wavelengths, 'M')
 
 coldfluxes = np.array([flux_a, flux_f, flux_g, flux_k, flux_m])
 coldfluxes = np.array([spectrum_a, spectrum_f, spectrum_g, spectrum_k, spectrum_m])
-pcoldstrtype = np.array([0.006, 0.03, 0.076, 0.121, 0.765]).reshape(-1,1)
+
+#pcoldstrtype = np.array([0.006, 0.03, 0.076, 0.121, 0.765]).reshape(-1,1)
+pcoldstrtype = np.array([0.198, 0.232, 0.299, 1.160, 6.275]).reshape(-1,1)
+pcoldstrtype /= np.sum(pcoldstrtype)
 coldfluxes = coldfluxes * pcoldstrtype
 coldflux = np.sum(coldfluxes, axis=0)
 
@@ -257,7 +255,9 @@ flux_b = b_planck + b_absorp
 
 hotfluxes = np.array([flux_o, flux_b])
 hotfluxes = np.array([spectrum_o, spectrum_b])
-photstrtype = np.array([0.1, 0.9]).reshape(-1,1)
+#photstrtype = np.array([0.1, 0.9]).reshape(-1,1)
+photstrtype = np.array([0.016, 0.254]).reshape(-1,1)
+photstrtype /= np.sum(photstrtype)
 hotfluxes = hotfluxes * photstrtype
 hotflux = np.sum(hotfluxes, axis=0)
 
@@ -275,6 +275,14 @@ SII = 6720
 SII_dist = gaussian(SII, 10)
 gasflux = 0.01*(8*Ha_dist + 6*Hb_dist + 4*OII_dist + OIII1_dist + 3*OIII2_dist + 2*SII_dist)
 
+# Rainbow Region
+alpha_rainbow = 0.10; num_colors = 500
+
+coordinates = np.linspace(4000, 7000, num_colors); y_region = np.array([10**(-6), 10**5])
+visible_spectrum = np.zeros((num_colors, 2))
+visible_spectrum[:, 0] = coordinates; visible_spectrum[:, 1] = coordinates
+ax.pcolormesh(coordinates, y_region, np.transpose(visible_spectrum), cmap = 'nipy_spectral', alpha = alpha_rainbow)
+
 # setting up sliders
 step = 1
 val0 = 0
@@ -288,8 +296,11 @@ scoldstr = Slider(axcoldstr, 'Colder Stars', 0, 10, valinit=val0, valstep=step)
 sgas = Slider(axgas, 'Gas', 0, 10, valinit=val0, valstep=step)
 
 def update(val):
-	hots = 40*shotstr.val
-	colds = 100*scoldstr.val
+	hots = 10**shotstr.val - 1
+	colds = 10**scoldstr.val - 1
+
+	#hots = 40*shotstr.val
+	#colds = 100*scoldstr.val
 	if shotstr.val>0 and sgas.val>0:
 		gas = 0.5*shotstr.val + 1.5*sgas.val
 	else:
@@ -322,5 +333,19 @@ def reset(event):
 	l.set_ydata(flux)
 	fig.canvas.draw_idle()
 button.on_clicked(reset)
+
+rax = plt.axes([0.01, 0.5, 0.25, 0.15], facecolor=axcolor)
+radio = RadioButtons(rax, ('Stellar range', 'Extended range'), active=0)
+
+def changeaxis(label):
+	if label == 'Stellar range':
+		ax.set_xscale('linear')
+		ax.set_xlim([3500, 8000])
+	elif label == 'Extended range':
+		ax.set_xscale('log')
+		ax.set_xlim([1000, 50000])
+	fig.canvas.draw_idle()
+
+radio.on_clicked(changeaxis)
 
 plt.show()
