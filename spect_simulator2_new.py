@@ -129,14 +129,36 @@ def luminosity(wavelength, stellar_type):
 
 ###############################################################################
 
+def dust_extinction(wavelength, A_v, R_v = 4.05):
+    # Calzetti Extinction Curve
+    # Source: http://webast.ast.obs-mip.fr/hyperz/hyperz_manual1/node10.html
+    # Source: https://ned.ipac.caltech.edu/level5/Sept12/Calzetti/Calzetti1_4.html
+    wavelength_u = wavelength * 10**(-3) # convert nm to um
+    k_lambda = 0 # extinction curve
+
+    one = np.floor(np.power(np.floor(wavelength_u / 0.63), 0.0001)) # if wavelength_u < 0.63, one = 1 and two = 0
+    two = 1 - one # else one = 0 and two = 1
+
+    k_lambda1 = 2.659 * (-2.156 + 1.509 / wavelength_u - 0.198 / wavelength_u**2 + 0.011 / wavelength_u**3) + R_v
+    k_lambda2 = 2.659 * (-1.857 + 1.040 / wavelength_u) + R_v
+
+    k_lambda = one * k_lambda1 + two * k_lambda2
+    return np.power(10, -0.4 * k_lambda * A_v / R_v)
+
+###############################################################################
+
 # setting up initial plot for spectrum
-fig, ax = plt.subplots()
-plt.subplots_adjust(left=0.35, bottom=0.275)
+fig, ax = plt.subplots(figsize = (8, 6))
+fig.canvas.set_window_title("Galaxy Spectra Tool")
+plt.subplots_adjust(left=0.30, bottom=0.325)
 lmbda = np.arange(1000.0, 50000.0, 10.0) #wavelength in Angstroms
 flux = np.zeros(len(lmbda))
-l, = plt.plot(lmbda, flux, lw=2, color='red')
+flux_extincted = np.zeros(len(lmbda))
+l, = plt.plot(lmbda, flux, lw=2, color='b')
+l_extincted, = plt.plot(lmbda, flux_extincted, lw=2, color = 'r')
 ax.set_xlim([3500, 8000])
 ax.set_ylim([0, 1])
+scales = {}; scales['x'] = 'linear'; scales['y'] = 'linear'
 
 
 ## STAR STUFF ############################################################################
@@ -290,10 +312,12 @@ axcolor = 'lightgoldenrodyellow'
 axhotstr = plt.axes([0.25, 0.075, 0.65, 0.03], facecolor=axcolor)
 axcoldstr = plt.axes([0.25, 0.125, 0.65, 0.03], facecolor=axcolor)
 axgas = plt.axes([0.25, 0.175, 0.65, 0.03], facecolor=axcolor)
+axdust = plt.axes([0.25, 0.225, 0.65, 0.03], facecolor=axcolor)
 
 shotstr = Slider(axhotstr, 'Hot Stars', 0, 10, valinit=val0, valstep=step)
 scoldstr = Slider(axcoldstr, 'Colder Stars', 0, 10, valinit=val0, valstep=step)
 sgas = Slider(axgas, 'Gas', 0, 10, valinit=val0, valstep=step)
+sdust = Slider(axdust, 'Dust', 0, 2.5, valinit=val0)
 
 def update(val):
 	hots = 10**shotstr.val - 1
@@ -307,19 +331,26 @@ def update(val):
 		gas = 0
 	flux = colds*coldflux + hots*hotflux + gas*gasflux
 
+	dust_Av = sdust.val
+
 	normalization_index = np.searchsorted(lmbda, 5556)
 	normalization = flux[normalization_index]
 
 	flux /= normalization
-	ax.set_ylim(0, 2)
+	#ax.set_ylim(0, 2)
 	print(min(flux), max(flux))
 
+	flux_extincted = flux * dust_extinction(wavelengths, dust_Av)
+
 	l.set_ydata(flux)
+	l_extincted.set_ydata(flux_extincted)
+
 	fig.canvas.draw_idle()
 
 shotstr.on_changed(update)
 scoldstr.on_changed(update)
 sgas.on_changed(update)
+sdust.on_changed(update)
 
 resetax = plt.axes([0.8, 0.025, 0.1, 0.04])
 button = Button(resetax, 'Reset', color=axcolor, hovercolor='0.975')
@@ -334,18 +365,32 @@ def reset(event):
 	fig.canvas.draw_idle()
 button.on_clicked(reset)
 
-rax = plt.axes([0.01, 0.5, 0.25, 0.15], facecolor=axcolor)
-radio = RadioButtons(rax, ('Stellar range', 'Extended range'), active=0)
+rax = plt.axes([0.01, 0.5, 0.20, 0.15], facecolor=axcolor)
+radio_x = RadioButtons(rax, ('Visible', 'Extended'), active=0)
 
-def changeaxis(label):
-	if label == 'Stellar range':
+rax = plt.axes([0.01, 0.3, 0.20, 0.15], facecolor=axcolor)
+radio_y = RadioButtons(rax, ('Linear L', 'Log L'), active=0)
+
+def changexaxis(label):
+	if label == 'Visible':
 		ax.set_xscale('linear')
 		ax.set_xlim([3500, 8000])
-	elif label == 'Extended range':
+	elif label == 'Extended':
 		ax.set_xscale('log')
 		ax.set_xlim([1000, 50000])
 	fig.canvas.draw_idle()
 
-radio.on_clicked(changeaxis)
+def changeyaxis(label):
+	if label == 'Linear L':
+		ax.set_ylim([0, 2])
+		ax.set_yscale('linear')
+	elif label == 'Log L':
+		ax.set_ylim([10**(-5), 10**(2)])
+		ax.set_yscale('log')
+		
+	fig.canvas.draw_idle()
+
+radio_x.on_clicked(changexaxis)
+radio_y.on_clicked(changeyaxis)
 
 plt.show()
