@@ -308,7 +308,7 @@ OIII2 = 5010
 OIII2_dist = gaussian(OIII2, 10)
 SII = 6720
 SII_dist = gaussian(SII, 10)
-gasflux = 2*(8*Ha_dist + 6*Hb_dist + 4*OII_dist + OIII1_dist + 3*OIII2_dist + 2*SII_dist)
+gasflux = 5*(6*Ha_dist + 6*Hb_dist + 4*OII_dist + OIII1_dist + 3*OIII2_dist + 2*SII_dist)
 
 # Rainbow Region
 alpha_rainbow = 0.10; num_colors = 500
@@ -331,7 +331,7 @@ axdust = plt.axes([0.70, 0.175, 0.20, 0.03], facecolor=axcolor)
 shotstr = Slider(axhotstr, 'New Stars', 0, 10, valinit=val0)
 scoldstr = Slider(axcoldstr, 'Young Stars', 0, 10, valinit=val0)
 soldstr = Slider(axoldstr, 'Old Stars', 0, 10, valinit=val0)
-sgas = Slider(axgas, 'Gas', 0, 10, valinit=val0)
+sgas = Slider(axgas, 'Hot Gas', 0, 10, valinit=val0)
 sdust = Slider(axdust, 'Dust', 0, 2.5, valinit=val0)
 
 def update(val):
@@ -342,7 +342,8 @@ def update(val):
 	#hots = 40*shotstr.val
 	#colds = 100*scoldstr.val
 	if shotstr.val>0 and sgas.val>0:
-		gas = 0.5*shotstr.val + 1.5*sgas.val
+		coefficient = (shotstr.val / (shotstr.val + 5 * scoldstr.val + 5 * soldstr.val))
+		gas = (0.5 + 1.5*sgas.val)*coefficient
 	else:
 		gas = 0
 	flux = olds*oldflux + colds*coldflux + hots*hotflux
@@ -400,9 +401,12 @@ def reset(event):
 	global flux
 	shotstr.reset()
 	scoldstr.reset()
+	soldstr.reset()
 	sgas.reset()
+	sdust.reset()
 	flux = np.zeros(len(lmbda))
 	l.set_ydata(flux)
+	l_extincted.set_ydata(flux)
 	fig.canvas.draw_idle()
 button.on_clicked(reset)
 
