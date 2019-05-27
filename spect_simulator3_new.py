@@ -308,7 +308,7 @@ OIII2 = 5010
 OIII2_dist = gaussian(OIII2, 10)
 SII = 6720
 SII_dist = gaussian(SII, 10)
-gasflux = 0.01*(8*Ha_dist + 6*Hb_dist + 4*OII_dist + OIII1_dist + 3*OIII2_dist + 2*SII_dist)
+gasflux = 2*(8*Ha_dist + 6*Hb_dist + 4*OII_dist + OIII1_dist + 3*OIII2_dist + 2*SII_dist)
 
 # Rainbow Region
 alpha_rainbow = 0.10; num_colors = 500
@@ -345,7 +345,7 @@ def update(val):
 		gas = 0.5*shotstr.val + 1.5*sgas.val
 	else:
 		gas = 0
-	flux = olds*oldflux + colds*coldflux + hots*hotflux + gas*gasflux
+	flux = olds*oldflux + colds*coldflux + hots*hotflux
 
 	dust_Av = sdust.val
 
@@ -354,6 +354,7 @@ def update(val):
 
 	if normalization != 0:
 		flux /= normalization
+	flux += gas*gasflux
 	flux_extincted = flux * dust_extinction(wavelengths, dust_Av)
 
 	if scales['x'] == 'linear':
