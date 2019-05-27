@@ -341,21 +341,26 @@ def update(val):
 
 	#hots = 40*shotstr.val
 	#colds = 100*scoldstr.val
-	if shotstr.val>0 and sgas.val>0:
-		coefficient = (shotstr.val / (shotstr.val + 5 * scoldstr.val + 5 * soldstr.val))
-		gas = (0.5 + 1.5*sgas.val)*coefficient
-	else:
-		gas = 0
+
 	flux = olds*oldflux + colds*coldflux + hots*hotflux
-
-	dust_Av = sdust.val
-
+	
 	normalization_index = np.searchsorted(lmbda, 5556)
 	normalization = flux[normalization_index]
 
 	if normalization != 0:
 		flux /= normalization
+
+	start_UV = np.searchsorted(lmbda, 1000); end_UV = np.searchsorted(lmbda, 4000)
+	max_flux_UV = max(flux[start_UV:end_UV])
+	if sgas.val>0:
+		frac_coefficient = (shotstr.val / (shotstr.val + 2 * scoldstr.val + 4 * soldstr.val)) 
+		UV_coefficient = (max_flux_UV + 1.0)**0.1 - 1.0 # scale with UV flux (sort of)
+		gas = (0.5 + 1.5*sgas.val)*frac_coefficient*UV_coefficient
+	else:
+		gas = 0
 	flux += gas*gasflux
+
+	dust_Av = sdust.val
 	flux_extincted = flux * dust_extinction(wavelengths, dust_Av)
 
 	if scales['x'] == 'linear':
@@ -363,13 +368,13 @@ def update(val):
 		ax.set_xlim([1000, 10000])
 	else:
 		ax.set_xscale('log')
-		ax.set_xlim([1000, 50000])
+		ax.set_xlim([1000, 100000])
 
 	if scales['y'] == 'linear':
 		ax.set_yscale('linear')
 		if scales['x'] == 'linear':
-			start = np.searchsorted(lmbda, start_x); end = np.searchsorted(lmbda, end_x)
-			visible_flux = flux[start:end]
+			start_visible = np.searchsorted(lmbda, start_x); end_visible = np.searchsorted(lmbda, end_x)
+			visible_flux = flux[start_visible:end_visible]
 			max_y = max(visible_flux)
 			if max_y < 1:
 				max_y = 1
