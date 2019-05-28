@@ -160,11 +160,11 @@ l_extincted, = plt.plot(lmbda, flux_extincted, lw=2, color = 'r')
 start_x = 1000; end_x = 10000
 ax.set_xlim([start_x, end_x])
 ax.set_ylim([0, 1])
-scales = {}; scales['x'] = 'linear'; scales['y'] = 'linear'
+scales = {}; scales['x'] = 'linear'; scales['y'] = 'linear'; scales['vary'] = True
 
-fontsize = 17
+fontsize = 16
 ax.set_xlabel('Wavelength [nm]', fontsize = fontsize)
-ax.set_ylabel(r'Luminosity [$L / L_{556\ nm}$]', usetex = True, fontsize = fontsize)
+ax.set_ylabel(r'Luminosity [$L / L_{556\ nm}$]', usetex = True, fontsize = fontsize + 1)
 
 ## STAR STUFF ############################################################################
 ##########################################################################################
@@ -332,7 +332,7 @@ shotstr = Slider(axhotstr, 'New Stars', 0, 10, valinit=val0)
 scoldstr = Slider(axcoldstr, 'Young Stars', 0, 10, valinit=val0)
 soldstr = Slider(axoldstr, 'Old Stars', 0, 10, valinit=val0)
 sgas = Slider(axgas, 'Hot Gas', 0, 10, valinit=val0)
-sdust = Slider(axdust, 'Dust', 0, 2.5, valinit=val0)
+sdust = Slider(axdust, 'Dust', 0, 2, valinit=val0)
 
 def update(val):
 	hots = 10**shotstr.val - 1
@@ -354,7 +354,7 @@ def update(val):
 	max_flux_UV = max(flux[start_UV:end_UV])
 	if sgas.val>0:
 		frac_coefficient = (shotstr.val / (shotstr.val + 2 * scoldstr.val + 4 * soldstr.val)) 
-		UV_coefficient = (max_flux_UV + 1.0)**0.1 - 1.0 # scale with UV flux (sort of)
+		UV_coefficient = (max_flux_UV + 1.0)**0.15 - 1.0 # scale with UV flux (sort of)
 		gas = (0.5 + 1.5*sgas.val)*frac_coefficient*UV_coefficient
 	else:
 		gas = 0
@@ -363,30 +363,8 @@ def update(val):
 	dust_Av = sdust.val
 	flux_extincted = flux * dust_extinction(wavelengths, dust_Av)
 
-	if scales['x'] == 'linear':
-		ax.set_xscale('linear')
-		ax.set_xlim([1000, 10000])
-	else:
-		ax.set_xscale('log')
-		ax.set_xlim([1000, 100000])
-
-	if scales['y'] == 'linear':
-		ax.set_yscale('linear')
-		if scales['x'] == 'linear':
-			start_visible = np.searchsorted(lmbda, start_x); end_visible = np.searchsorted(lmbda, end_x)
-			visible_flux = flux[start_visible:end_visible]
-			max_y = max(visible_flux)
-			if max_y < 1:
-				max_y = 1
-			ax.set_ylim([0, max_y])
-		else:
-			max_y = np.max(flux)
-			if max_y < 1 or max_y is np.nan:
-				max_y = 1
-			ax.set_ylim([0, max_y])
-	else:
-		ax.set_yscale('log')
-		ax.set_ylim([10**(-4), 10**(2)])
+	if scales['vary']:
+		change_axes(flux)
 
 	l.set_ydata(flux)
 	l_extincted.set_ydata(flux_extincted)
@@ -415,11 +393,40 @@ def reset(event):
 	fig.canvas.draw_idle()
 button.on_clicked(reset)
 
-rax = plt.axes([0.01, 0.65, 0.15, 0.10], facecolor=axcolor)
+rax = plt.axes([0.01, 0.70, 0.15, 0.10], facecolor=axcolor)
 radio_x = RadioButtons(rax, ('Visible', 'Extended'), active=0)
 
-rax = plt.axes([0.01, 0.50, 0.15, 0.10], facecolor=axcolor)
-radio_y = RadioButtons(rax, ('Linear L', 'Log L'), active=0)
+ray = plt.axes([0.01, 0.55, 0.15, 0.10], facecolor=axcolor)
+radio_y = RadioButtons(ray, ('Linear L', 'Log L'), active=0)
+
+rav = plt.axes([0.01, 0.40, 0.15, 0.10], facecolor=axcolor)
+radio_vary = RadioButtons(rav, ('Vary L-axis', 'Lock L-axis'), active=0)
+
+def change_axes(flux):
+	if scales['x'] == 'linear':
+		ax.set_xscale('linear')
+		ax.set_xlim([1000, 10000])
+	else:
+		ax.set_xscale('log')
+		ax.set_xlim([1000, 100000])
+
+	if scales['y'] == 'linear':
+		ax.set_yscale('linear')
+		if scales['x'] == 'linear':
+			start_visible = np.searchsorted(lmbda, start_x); end_visible = np.searchsorted(lmbda, end_x)
+			visible_flux = flux[start_visible:end_visible]
+			max_y = max(visible_flux)
+			if max_y < 1:
+				max_y = 1
+			ax.set_ylim([0, max_y])
+		else:
+			max_y = np.max(flux)
+			if max_y < 1 or max_y is np.nan:
+				max_y = 1
+			ax.set_ylim([0, max_y])
+	else:
+		ax.set_yscale('log')
+		ax.set_ylim([10**(-4), 10**(2)])
 
 def changexaxis(label):
 	if label == 'Visible':
@@ -430,7 +437,7 @@ def changexaxis(label):
 		scales['x'] = 'log'
 		#ax.set_xscale('log')
 		#ax.set_xlim([1000, 50000])
-	update(label)
+	change_axes(l.get_ydata())
 	fig.canvas.draw_idle()
 
 def changeyaxis(label):
@@ -442,10 +449,17 @@ def changeyaxis(label):
 		scales['y'] = 'log'
 		#ax.set_ylim([10**(-5), 10**(2)])
 		#ax.set_yscale('log')
-	update(label)
+	change_axes(l.get_ydata())
 	fig.canvas.draw_idle()
+
+def vary_yaxis(label):
+	if label == 'Vary L-axis':
+		scales['vary'] = True
+	elif label == 'Lock L-axis':
+		scales['vary'] = False
 
 radio_x.on_clicked(changexaxis)
 radio_y.on_clicked(changeyaxis)
+radio_vary.on_clicked(vary_yaxis)
 
 plt.show()
