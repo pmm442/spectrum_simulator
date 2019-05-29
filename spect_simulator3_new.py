@@ -44,6 +44,23 @@ ref_temperature = np.power(10, log_stellar_temperatures['M'])
 
 ### Interpolators ###
 
+def get_dust_interpolator():
+    fn = "dust_emission/spec_12.dat"
+    data = np.loadtxt(fn)
+
+    wavelengths = np.zeros(len(data[:, 0]) + 1)
+    dust_emission_data = np.zeros(len(data[:, 0]) + 1)
+
+    wavelengths[0] = 0.05
+    dust_emission_data[0] = -20
+
+    wavelengths[1:] = data[:, 0] * 1000.0 # Convert from um to nm
+    dust_emission_data[1:] = data[:, 1] + 28 # arbitary normalization
+
+    dust_emission_interpolator = interp1d(wavelengths, dust_emission_data)
+    return dust_emission_interpolator
+dust_interpolator = get_dust_interpolator()
+
 def get_radius_interpolator():
     # Using reference values from https://en.wikipedia.org/wiki/Main_sequence
     temperatures = np.array([2660, 3120, 3920, 4410, 5240, 5610, 5780, 5920, 6540, 7240, 8620, 10800, 16400, 30000, 38000])
@@ -145,19 +162,39 @@ def dust_extinction(wavelength, A_v, R_v = 4.05):
     k_lambda = one * k_lambda1 + two * k_lambda2
     return np.power(10, -0.4 * k_lambda * A_v / R_v)
 
+def dust_emission(wavelength):
+	return np.power(10, dust_interpolator(wavelength)) # interpolator gives log of emission
+
+def normalize_dust_emission(wavelengths, dust_emission, integrated_dust_emission, flux, flux_extincted):
+	optical_cutoff = np.searchsorted(wavelengths, 1000)
+	flux_absorbed = flux - flux_extincted
+
+	integrated_flux_absorbed = 0
+	for i, flux_absorbed_i in enumerate(flux_absorbed[:optical_cutoff]):
+		d_wavelength = wavelengths[i+1] - wavelengths[i]
+		integrated_flux_absorbed += flux_absorbed_i * d_wavelength
+
+	normalization = integrated_flux_absorbed / integrated_dust_emission
+	return dust_emission * normalization
+
 ###############################################################################
 
 # setting up initial plot for spectrum
 fig, ax = plt.subplots(figsize = (8, 6))
 fig.canvas.set_window_title("Galaxy Spectra Tool")
 plt.subplots_adjust(left=0.30, bottom=0.375)
-lmbda = np.arange(1000.0, 50000.0, 10.0) #wavelength in Angstroms
+
+optical_wavelengths = np.linspace(125, 1200, 2000) 
+ir_wavelengths = np.logspace(np.log10(1200), np.log10(1000000), 10000)
+lmbda = np.concatenate((optical_wavelengths, ir_wavelengths))
+
+#lmbda = np.arange(1000.0, 50000.0, 10.0) #wavelength in Angstroms
 flux = np.zeros(len(lmbda))
 flux_extincted = np.zeros(len(lmbda))
 l, = plt.plot(lmbda, flux, lw=2, color='b')
 l_extincted, = plt.plot(lmbda, flux_extincted, lw=2, color = 'r')
 
-start_x = 1000; end_x = 10000
+start_x = 100; end_x = 1000
 ax.set_xlim([start_x, end_x])
 ax.set_ylim([0, 1])
 scales = {}; scales['x'] = 'linear'; scales['y'] = 'linear'; scales['vary'] = True
@@ -246,7 +283,7 @@ m_planck = planckslaw(mu_mstrs)
 #m_absorp = -0.01*(Ti_O1_dist + Ti_O3_dist + Ti_O5_dist + Ti_O7_dist + Gband_dist + Na_dist)
 flux_m = m_planck #+ m_absorp
 
-wavelengths = lmbda / 10.0
+wavelengths = lmbda #/ 10.0
 #spectrum_o = vectorized_luminosity(wavelengths, 'O')
 #spectrum_b = vectorized_luminosity(wavelengths, 'B')
 #spectrum_a = vectorized_luminosity(wavelengths, 'A')
@@ -300,20 +337,33 @@ hotflux = np.sum(hotfluxes, axis=0)
 ##########################################################################################
 # Ha_dist same as above
 # Hb_dist same as above
-OII = 3730
+OII = 373
 OII_dist = gaussian(OII, 10)
-OIII1 = 4960
+OIII1 = 496
 OIII1_dist = gaussian(OIII1, 10)
-OIII2 = 5010
+OIII2 = 501
 OIII2_dist = gaussian(OIII2, 10)
-SII = 6720
+SII = 672
 SII_dist = gaussian(SII, 10)
 gasflux = 5*(6*Ha_dist + 6*Hb_dist + 4*OII_dist + OIII1_dist + 3*OIII2_dist + 2*SII_dist)
+
+## DUST STUFF #############################################################################
+##########################################################################################
+
+dustflux = dust_emission(wavelengths)
+
+ir_cutoff = np.searchsorted(wavelengths, 1200)
+integrated_dustflux = 0
+for i, dustflux_i in enumerate(dustflux[ir_cutoff:]):
+	d_wavelength = wavelengths[ir_cutoff + i] - wavelengths[ir_cutoff + i-1]
+	integrated_dustflux += dustflux_i * d_wavelength
+
+##########################################################################################
 
 # Rainbow Region
 alpha_rainbow = 0.10; num_colors = 500
 
-coordinates = np.linspace(4000, 7000, num_colors); y_region = np.array([10**(-6), 10**5])
+coordinates = np.linspace(400, 700, num_colors); y_region = np.array([10**(-6), 10**5])
 visible_spectrum = np.zeros((num_colors, 2))
 visible_spectrum[:, 0] = coordinates; visible_spectrum[:, 1] = coordinates
 ax.pcolormesh(coordinates, y_region, np.transpose(visible_spectrum), cmap = 'nipy_spectral', alpha = alpha_rainbow)
@@ -344,7 +394,7 @@ def update(val):
 
 	flux = olds*oldflux + colds*coldflux + hots*hotflux
 	
-	normalization_index = np.searchsorted(lmbda, 5556)
+	normalization_index = np.searchsorted(lmbda, 555.6)
 	normalization = flux[normalization_index]
 
 	if normalization != 0:
@@ -353,7 +403,7 @@ def update(val):
 	start_UV = np.searchsorted(lmbda, 1000); end_UV = np.searchsorted(lmbda, 4000)
 	max_flux_UV = max(flux[start_UV:end_UV])
 	if sgas.val>0:
-		frac_coefficient = (shotstr.val / (shotstr.val + 2 * scoldstr.val + 4 * soldstr.val)) 
+		frac_coefficient = (shotstr.val / (shotstr.val + 2 * scoldstr.val + 4 * soldstr.val + 0.0001)) 
 		UV_coefficient = (max_flux_UV + 1.0)**0.15 - 1.0 # scale with UV flux (sort of)
 		gas = (0.5 + 1.5*sgas.val)*frac_coefficient*UV_coefficient
 	else:
@@ -362,6 +412,10 @@ def update(val):
 
 	dust_Av = sdust.val
 	flux_extincted = flux * dust_extinction(wavelengths, dust_Av)
+
+	if dust_Av > 0:
+		scaled_dust_emission = normalize_dust_emission(wavelengths, dustflux, integrated_dustflux, flux, flux_extincted)
+		flux_extincted += scaled_dust_emission
 
 	if scales['vary']:
 		change_axes(flux)
@@ -405,10 +459,10 @@ radio_vary = RadioButtons(rav, ('Vary L-axis', 'Lock L-axis'), active=0)
 def change_axes(flux):
 	if scales['x'] == 'linear':
 		ax.set_xscale('linear')
-		ax.set_xlim([1000, 10000])
+		ax.set_xlim([100, 1000])
 	else:
 		ax.set_xscale('log')
-		ax.set_xlim([1000, 100000])
+		ax.set_xlim([100, 100000])
 
 	if scales['y'] == 'linear':
 		ax.set_yscale('linear')
