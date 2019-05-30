@@ -181,7 +181,7 @@ def normalize_dust_emission(wavelengths, dust_emission, integrated_dust_emission
 
 # setting up initial plot for spectrum
 fig, ax = plt.subplots(figsize = (8, 6))
-fig.canvas.set_window_title("Galaxy Spectra Tool")
+fig.canvas.set_window_title("Galaxy Spectrum Tool")
 plt.subplots_adjust(left=0.30, bottom=0.375)
 
 optical_wavelengths = np.linspace(125, 1200, 2000) 
@@ -191,8 +191,10 @@ lmbda = np.concatenate((optical_wavelengths, ir_wavelengths))
 #lmbda = np.arange(1000.0, 50000.0, 10.0) #wavelength in Angstroms
 flux = np.zeros(len(lmbda))
 flux_extincted = np.zeros(len(lmbda))
-l, = plt.plot(lmbda, flux, lw=2, color='b')
-l_extincted, = plt.plot(lmbda, flux_extincted, lw=2, color = 'r')
+l, = plt.plot(lmbda, flux, lw=2, color='b', label = "w/o dust")
+l_extincted, = plt.plot(lmbda, flux_extincted, lw=2, color = 'r', label = "w/ dust")
+
+plt.legend(loc = "upper right")
 
 start_x = 100; end_x = 1000
 ax.set_xlim([start_x, end_x])
@@ -230,36 +232,36 @@ sig_bstrs = 3.3 #*10^3 K
 # spectral absorption lines in angstroms
 # http://cas.sdss.org/dr5/en/proj/basic/spectraltypes/lines.asp
 # http://astro.uchicago.edu/~subbarao/newWeb/line.html
-Ha = 6600			# Bsome, Astrong, F
-Ha_dist = gaussian(Ha, 10)
-Hb = 4800			# Bsome, Astrong, F
-Hb_dist = gaussian(Hb, 20)
-Hg = 4350			# Bsome, Astrong, F
-Hg_dist = gaussian(Hg, 10)
-Ca_K = 3800			# F
-Ca_K_dist = gaussian(Ca_K, 10)
-Ca_H = 4000			# F
-Ca_H_dist = gaussian(Ca_H, 10)
-Ti_O1 = 5050		# Mstrong, K, G
-Ti_O1_dist = gaussian(Ti_O1, 10)
+Ha = 660			# Bsome, Astrong, F
+Ha_dist = gaussian(Ha, 1)
+Hb = 480			# Bsome, Astrong, F
+Hb_dist = gaussian(Hb, 2)
+Hg = 435			# Bsome, Astrong, F
+Hg_dist = gaussian(Hg, 1)
+Ca_K = 380			# F
+Ca_K_dist = gaussian(Ca_K, 1)
+Ca_H = 400			# F
+Ca_H_dist = gaussian(Ca_H, 1)
+Ti_O1 = 505		# Mstrong, K, G
+Ti_O1_dist = gaussian(Ti_O1, 1)
 #Ti_O2 = 5200
-Ti_O3 = 5550		# Mstrong, K, G
-Ti_O3_dist = gaussian(Ti_O3, 10)
+Ti_O3 = 555		# Mstrong, K, G
+Ti_O3_dist = gaussian(Ti_O3, 1)
 #Ti_O4 = 5700
-Ti_O5 = 6250		# Mstrong, K, G
-Ti_O5_dist = gaussian(Ti_O5, 10)
+Ti_O5 = 625		# Mstrong, K, G
+Ti_O5_dist = gaussian(Ti_O5, 1)
 #Ti_O6 = 6300
-Ti_O7 = 6800		# Mstrong, K, G
-Ti_O7_dist = gaussian(Ti_O7, 10)
+Ti_O7 = 680		# Mstrong, K, G
+Ti_O7_dist = gaussian(Ti_O7, 1)
 #Ti_O8 = 6900
 Gband = 4250		# Gstrong, M, K
-Gband_dist = gaussian(Gband, 10)
-Na = 5800 			# Mvstrong, K
-Na_dist = gaussian(Na, 10)
-He_neutral = 4200	# B
-He_neutral_dist = gaussian(He_neutral, 10)
-He_ion = 4400		# O
-He_ion_dist = gaussian(He_ion, 10)
+Gband_dist = gaussian(Gband, 1)
+Na = 580 			# Mvstrong, K
+Na_dist = gaussian(Na, 1)
+He_neutral = 420	# B
+He_neutral_dist = gaussian(He_neutral, 1)
+He_ion = 440		# O
+He_ion_dist = gaussian(He_ion, 1)
 
 
 # calculate fluxes for stars
@@ -338,14 +340,14 @@ hotflux = np.sum(hotfluxes, axis=0)
 # Ha_dist same as above
 # Hb_dist same as above
 OII = 373
-OII_dist = gaussian(OII, 10)
+OII_dist = gaussian(OII, 1)
 OIII1 = 496
-OIII1_dist = gaussian(OIII1, 10)
+OIII1_dist = gaussian(OIII1, 1)
 OIII2 = 501
-OIII2_dist = gaussian(OIII2, 10)
+OIII2_dist = gaussian(OIII2, 1)
 SII = 672
-SII_dist = gaussian(SII, 10)
-gasflux = 5*(6*Ha_dist + 6*Hb_dist + 4*OII_dist + OIII1_dist + 3*OIII2_dist + 2*SII_dist)
+SII_dist = gaussian(SII, 1)
+gasflux = 2*(6*Ha_dist + 6*Hb_dist + 4*OII_dist + OIII1_dist + 3*OIII2_dist + 2*SII_dist)
 
 ## DUST STUFF #############################################################################
 ##########################################################################################
@@ -400,10 +402,10 @@ def update(val):
 	if normalization != 0:
 		flux /= normalization
 
-	start_UV = np.searchsorted(lmbda, 1000); end_UV = np.searchsorted(lmbda, 4000)
+	start_UV = np.searchsorted(lmbda, 100); end_UV = np.searchsorted(lmbda, 400)
 	max_flux_UV = max(flux[start_UV:end_UV])
 	if sgas.val>0:
-		frac_coefficient = (shotstr.val / (shotstr.val + 2 * scoldstr.val + 4 * soldstr.val + 0.0001)) 
+		frac_coefficient = (shotstr.val / (shotstr.val + scoldstr.val / 2.0 + soldstr.val / 2.0 + 0.0001)) 
 		UV_coefficient = (max_flux_UV + 1.0)**0.15 - 1.0 # scale with UV flux (sort of)
 		gas = (0.5 + 1.5*sgas.val)*frac_coefficient*UV_coefficient
 	else:
