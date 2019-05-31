@@ -191,8 +191,8 @@ lmbda = np.concatenate((optical_wavelengths, ir_wavelengths))
 #lmbda = np.arange(1000.0, 50000.0, 10.0) #wavelength in Angstroms
 flux = np.zeros(len(lmbda))
 flux_extincted = np.zeros(len(lmbda))
-l, = plt.plot(lmbda, flux, lw=2, color='b', label = "w/o dust")
 l_extincted, = plt.plot(lmbda, flux_extincted, lw=2, color = 'r', label = "w/ dust")
+l, = plt.plot(lmbda, flux, lw=2, color='b', label = "w/o dust")
 
 plt.legend(loc = "upper right")
 
@@ -202,7 +202,7 @@ ax.set_ylim([0, 1])
 scales = {}; scales['x'] = 'linear'; scales['y'] = 'linear'; scales['vary'] = True
 
 fontsize = 16
-ax.set_xlabel('Wavelength [nm]', fontsize = fontsize)
+ax.set_xlabel(r'Wavelength $\lambda$ [nm]', fontsize = fontsize)
 ax.set_ylabel(r'Luminosity [$L / L_{556\ nm}$]', usetex = True, fontsize = fontsize + 1)
 
 ## STAR STUFF ############################################################################
@@ -339,6 +339,8 @@ hotflux = np.sum(hotfluxes, axis=0)
 ##########################################################################################
 # Ha_dist same as above
 # Hb_dist same as above
+
+#### hot gas
 OII = 373
 OII_dist = gaussian(OII, 1)
 OIII1 = 496
@@ -349,6 +351,16 @@ SII = 672
 SII_dist = gaussian(SII, 1)
 gasflux = 2*(6*Ha_dist + 6*Hb_dist + 4*OII_dist + OIII1_dist + 3*OIII2_dist + 2*SII_dist)
 
+#### cold gas
+NaIa = 589
+NaIa_dist = gaussian(NaIa, 1)
+NaIb = 589.6
+NaIb_dist = gaussian(NaIb, 1)
+CaIIa = 393.3
+CaIIa_dist = gaussian(CaIIa, 1)
+CaIIb = 396.8
+CaIIb_dist = gaussian(CaIIb, 1)
+coldgasflux = (NaIa_dist + NaIb_dist + CaIIa_dist + CaIIb_dist)
 ## DUST STUFF #############################################################################
 ##########################################################################################
 
@@ -377,13 +389,15 @@ axcolor = 'lightgoldenrodyellow'
 axhotstr = plt.axes([0.25, 0.075, 0.25, 0.03], facecolor=axcolor)
 axcoldstr = plt.axes([0.25, 0.125, 0.25, 0.03], facecolor=axcolor)
 axoldstr = plt.axes([0.25, 0.175, 0.25, 0.03], facecolor=axcolor)
-axgas = plt.axes([0.70, 0.125, 0.20, 0.03], facecolor=axcolor)
+axhotgas = plt.axes([0.70, 0.125, 0.20, 0.03], facecolor=axcolor)
+axcoldgas = plt.axes([0.70, 0.075, 0.20, 0.03], facecolor=axcolor)
 axdust = plt.axes([0.70, 0.175, 0.20, 0.03], facecolor=axcolor)
 
 shotstr = Slider(axhotstr, 'New Stars', 0, 10, valinit=val0)
 scoldstr = Slider(axcoldstr, 'Young Stars', 0, 10, valinit=val0)
 soldstr = Slider(axoldstr, 'Old Stars', 0, 10, valinit=val0)
-sgas = Slider(axgas, 'Hot Gas', 0, 10, valinit=val0)
+shotgas = Slider(axhotgas, 'Hot Gas', 0, 10, valinit=val0)
+scoldgas = Slider(axcoldgas, 'Cold Gas', 0, 10, valinit=val0)
 sdust = Slider(axdust, 'Dust', 0, 2, valinit=val0)
 
 def update(val):
@@ -404,13 +418,19 @@ def update(val):
 
 	start_UV = np.searchsorted(lmbda, 100); end_UV = np.searchsorted(lmbda, 400)
 	max_flux_UV = max(flux[start_UV:end_UV])
-	if sgas.val>0:
+	if shotgas.val>0:
 		frac_coefficient = (shotstr.val / (shotstr.val + scoldstr.val / 2.0 + soldstr.val / 2.0 + 0.0001)) 
 		UV_coefficient = (max_flux_UV + 1.0)**0.15 - 1.0 # scale with UV flux (sort of)
-		gas = (0.5 + 1.5*sgas.val)*frac_coefficient*UV_coefficient
+		gas = (0.5 + 1.5*shotgas.val)*frac_coefficient*UV_coefficient
 	else:
 		gas = 0
+	print gas
+	print gasflux
 	flux += gas*gasflux
+
+	if scoldgas.val>0:
+		coldgas = 0.1*scoldgas.val #arbitrary normalization
+		flux -= coldgas*coldgasflux
 
 	dust_Av = sdust.val
 	flux_extincted = flux * dust_extinction(wavelengths, dust_Av)
@@ -430,7 +450,8 @@ def update(val):
 shotstr.on_changed(update)
 scoldstr.on_changed(update)
 soldstr.on_changed(update)
-sgas.on_changed(update)
+shotgas.on_changed(update)
+scoldgas.on_changed(update)
 sdust.on_changed(update)
 
 resetax = plt.axes([0.8, 0.025, 0.1, 0.04])
@@ -441,7 +462,8 @@ def reset(event):
 	shotstr.reset()
 	scoldstr.reset()
 	soldstr.reset()
-	sgas.reset()
+	shotgas.reset()
+	scoldgas.rese()
 	sdust.reset()
 	flux = np.zeros(len(lmbda))
 	l.set_ydata(flux)
@@ -450,7 +472,7 @@ def reset(event):
 button.on_clicked(reset)
 
 rax = plt.axes([0.01, 0.70, 0.15, 0.10], facecolor=axcolor)
-radio_x = RadioButtons(rax, ('Visible', 'Extended'), active=0)
+radio_x = RadioButtons(rax, (r'Linear $\lambda$', r'Log $\lambda$'), active=0)
 
 ray = plt.axes([0.01, 0.55, 0.15, 0.10], facecolor=axcolor)
 radio_y = RadioButtons(ray, ('Linear L', 'Log L'), active=0)
@@ -485,11 +507,11 @@ def change_axes(flux):
 		ax.set_ylim([10**(-4), 10**(2)])
 
 def changexaxis(label):
-	if label == 'Visible':
+	if 'Linear' in label:
 		scales['x'] = 'linear'
 		#ax.set_xscale('linear')
 		#ax.set_xlim([3500, 8000])
-	elif label == 'Extended':
+	elif 'Log' in label:
 		scales['x'] = 'log'
 		#ax.set_xscale('log')
 		#ax.set_xlim([1000, 50000])
@@ -497,11 +519,11 @@ def changexaxis(label):
 	fig.canvas.draw_idle()
 
 def changeyaxis(label):
-	if label == 'Linear L':
+	if 'Linear' in label:
 		scales['y'] = 'linear'
 		#ax.set_ylim([0, 2])
 		#ax.set_yscale('linear')
-	elif label == 'Log L':
+	elif 'Log' in label:
 		scales['y'] = 'log'
 		#ax.set_ylim([10**(-5), 10**(2)])
 		#ax.set_yscale('log')
