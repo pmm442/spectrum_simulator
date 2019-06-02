@@ -203,7 +203,7 @@ scales = {}; scales['x'] = 'linear'; scales['y'] = 'linear'; scales['vary'] = Tr
 
 fontsize = 16
 ax.set_xlabel(r'Wavelength $\lambda$ [nm]', fontsize = fontsize)
-ax.set_ylabel(r'Luminosity [$L / L_{556\ nm}$]', usetex = True, fontsize = fontsize + 1)
+ax.set_ylabel(r'Luminosity [$L / L_{556\ nm}$]', fontsize = fontsize + 1)
 
 ## STAR STUFF ############################################################################
 ##########################################################################################
@@ -392,12 +392,12 @@ ax.pcolormesh(coordinates, y_region, np.transpose(visible_spectrum), cmap = 'nip
 step = 1
 val0 = 0
 axcolor = 'lightgoldenrodyellow'
-axhotstr = plt.axes([0.25, 0.075, 0.25, 0.03], facecolor=axcolor)
-axcoldstr = plt.axes([0.25, 0.125, 0.25, 0.03], facecolor=axcolor)
-axoldstr = plt.axes([0.25, 0.175, 0.25, 0.03], facecolor=axcolor)
-axhotgas = plt.axes([0.70, 0.125, 0.20, 0.03], facecolor=axcolor)
-axcoldgas = plt.axes([0.70, 0.075, 0.20, 0.03], facecolor=axcolor)
-axdust = plt.axes([0.70, 0.175, 0.20, 0.03], facecolor=axcolor)
+axhotstr = plt.axes([0.25, 0.075, 0.25, 0.03]) #, facecolor=axcolor)
+axcoldstr = plt.axes([0.25, 0.125, 0.25, 0.03]) #, facecolor=axcolor)
+axoldstr = plt.axes([0.25, 0.175, 0.25, 0.03]) #, facecolor=axcolor)
+axhotgas = plt.axes([0.70, 0.125, 0.20, 0.03]) #, facecolor=axcolor)
+axcoldgas = plt.axes([0.70, 0.075, 0.20, 0.03]) #, facecolor=axcolor)
+axdust = plt.axes([0.70, 0.175, 0.20, 0.03]) #, facecolor=axcolor)
 
 shotstr = Slider(axhotstr, 'Brand-New Stars', 0, 10, valinit=val0)
 scoldstr = Slider(axcoldstr, 'Young Stars', 0, 10, valinit=val0)
@@ -475,13 +475,13 @@ def reset(event):
 	fig.canvas.draw_idle()
 button.on_clicked(reset)
 
-rax = plt.axes([0.01, 0.70, 0.15, 0.10], facecolor=axcolor)
+rax = plt.axes([0.01, 0.70, 0.15, 0.10]) #, facecolor=axcolor)
 radio_x = RadioButtons(rax, (r'Linear $\lambda$', r'Log $\lambda$'), active=0)
 
-ray = plt.axes([0.01, 0.55, 0.15, 0.10], facecolor=axcolor)
+ray = plt.axes([0.01, 0.55, 0.15, 0.10]) #, facecolor=axcolor)
 radio_y = RadioButtons(ray, ('Linear L', 'Log L'), active=0)
 
-rav = plt.axes([0.01, 0.40, 0.15, 0.10], facecolor=axcolor)
+rav = plt.axes([0.01, 0.40, 0.15, 0.10]) #, facecolor=axcolor)
 radio_vary = RadioButtons(rav, ('Vary L-axis', 'Lock L-axis'), active=0)
 
 def change_axes(flux):
